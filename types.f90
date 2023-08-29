@@ -41,7 +41,6 @@ module types
 
         y = 0
         do i = 0, this%degree
-            ! y = y + this%coefficients(i+1)*x**i
             y = modularAddition(y, modularMultiplication(this%coefficients(i+1), &
                 modularPower(x, i, this%modulus), this%modulus), this%modulus)
         end do
@@ -51,7 +50,6 @@ module types
     subroutine print(this)
         class(point), intent(in) :: this
         
-        ! print*, ' (', this%x, ',', this%y, ') '
         print*, this%x, ',', this%y
 
     end subroutine print

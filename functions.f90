@@ -98,33 +98,33 @@ module functions
 
 
     ! ASCII to decimal array
-    function str2Dec(str) result(decArray)
-        character(*), allocatable, intent(in) :: str
-        integer, dimension(:), allocatable :: decArray
-        integer :: i, strLength
+    ! function str2Dec(str) result(decArray)
+    !     character(*), allocatable, intent(in) :: str
+    !     integer, dimension(:), allocatable :: decArray
+    !     integer :: i, strLength
 
-        strLength = len(str)
-        allocate(decArray(strLength))
-        do i = 1, strLength
-            decArray(i) = iachar(str(i:i))
-        end do
+    !     strLength = len(str)
+    !     allocate(decArray(strLength))
+    !     do i = 1, strLength
+    !         decArray(i) = iachar(str(i:i))
+    !     end do
         
-    end function str2Dec
+    ! end function str2Dec
 
 
-    function dec2Str(decArray) result(asciiStr)
-        integer, dimension(:), allocatable, intent(in) :: decArray
-        character(:), allocatable :: asciiStr
-        integer :: i, decLength
+    ! function dec2Str(decArray) result(asciiStr)
+    !     integer, dimension(:), allocatable, intent(in) :: decArray
+    !     character(:), allocatable :: asciiStr
+    !     integer :: i, decLength
 
-        decLength = size(decArray)
-        allocate(character(decLength) :: asciiStr)
+    !     decLength = size(decArray)
+    !     allocate(character(decLength) :: asciiStr)
 
-        do i = 1, decLength
-            asciiStr(i:i) = achar(decArray(i))
-        end do
+    !     do i = 1, decLength
+    !         asciiStr(i:i) = achar(decArray(i))
+    !     end do
 
-    end function dec2Str
+    ! end function dec2Str
 
 
     function dec2Bin(dec, decBits) result(bin)
@@ -217,14 +217,9 @@ module functions
         poly = polynomial()
         call poly%init(K-1, mod, coeffs)
 
-        ! ! DEBUGGGGG
-        ! open(newunit=file, status='replace', file='p1.txt', action='write')
-        ! ! DEBUGGGGG
-
         do i = 1, N
             y = poly%value(i)
             crypted(i) = point(i,y)
-            ! call crypted(i)%write(file) ! DEBUGGGGG
         end do
 
     end function singleCrypt
@@ -288,23 +283,7 @@ module functions
                 error stop 'Shares not equal in length.'
             end if
             pointShares(i,:) = parseShare(shares(i), integerBits)
-            
-            ! DEBUG - occhio che qui ci sono vari punti con y a zero
-            ! e non so se ciò possa comportare problemi con l'inverso
-            ! però penso non sia questo il problema
-            ! do dec = 1, nPoints !DEBUGGGGG
-            !     call pointShares(i,dec)%print()
-            ! end do
-            ! stop
 
-        end do
-
-        ! DEBUGGGGG
-        open(newunit=shareLength, status='replace', file='p2.txt', action='write')
-        do i = 1, nPoints
-            do dec = 1, K
-                call pointShares(dec,i)%write(shareLength)
-            end do
         end do
 
         do i = 1, nPoints
@@ -450,7 +429,7 @@ module functions
         character(*), intent(in) :: sharesFilename
         character(2*secretMaxLength*integerBits), dimension(n) :: recoveredShares
         character(secretMaxLength) :: recoveredSecret
-        character(128) :: iomsg
+        character(256) :: iomsg
         integer :: fileID, iostat, i
 
         open(newunit=fileID, status='old', file=sharesFilename, action='read')
@@ -473,7 +452,7 @@ module functions
 
         print*, 'RECOVERED SECRET:'
         print*, ''
-        print*, recoveredSecret
+        print*, recoveredSecret ! Add end character to avoid whitespaces
 
     end subroutine recomposition
 
