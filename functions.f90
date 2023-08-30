@@ -2,6 +2,7 @@ module functions
     use types
     use arithmetics
     use iso_fortran_env, only: iostat_eor, iostat_end
+
     implicit none
         
     contains
@@ -90,23 +91,21 @@ module functions
 
     end function nextWhitespace
 
-    ! Va aggiunto il *0.25 quando regolo bene la storia degli numBits
     function dec2hex(dec, numBits) result(hex)
         integer, intent(in) :: dec, numBits
         character(numBits) :: hex
-        character(8) :: c
+        character(10) :: c
 
         write(c,'(I0)') numBits
         write(hex,'(Z' // c // '.' // c // ')') dec
 
     end function dec2hex
 
-    ! Anche qui
     function hex2dec(hex, numBits) result(dec)
         integer, intent(in) :: numBits
         character(*), intent(in) :: hex
         integer :: dec
-        character(8) :: c
+        character(10) :: c
 
         write(c,'(I0)') numBits
         read(hex,'(Z' // c // '.' // c // ')') dec
@@ -180,12 +179,8 @@ module functions
             decChar = iachar(paddedSecret(i:i))
             cryptedChar = singleCrypt(decChar, N, K, modulus)
             do j = 1, N
-                shares(j)(1+(i-1)*2*numBits:numBits+(i-1)*2*numBits) = &
-                    dec2hex(cryptedChar(j)%x, numBits)
-                ! print*, dec2hex(cryptedChar(j)%x, numBits) ! DEBUGGGG
-                shares(j)(1+numBits+(i-1)*2*numBits:2*numBits+(i-1)*2*numBits) = &
-                    dec2hex(cryptedChar(j)%y, numBits)
-                ! print*, dec2hex(cryptedChar(j)%y, numBits) ! DEBUGGGG
+                shares(j)(1+(i-1)*2*numBits:numBits*(2*i-1)) = dec2hex(cryptedChar(j)%x, numBits)
+                shares(j)(1+numBits*(2*i-1):2*numbits*i) = dec2hex(cryptedChar(j)%y, numBits)
             end do
         end do
         
@@ -199,17 +194,15 @@ module functions
         integer :: i, shareLength, nPoints, dec
         type(point), dimension(:,:), allocatable :: pointShares
 
+        if (size(shares) > K) then
+            print*, 'MESSAGE: More shares than necessary. Using only first K ones.'
+        end if
+
         shareLength = len(shares(1))
         if (mod(shareLength,numBits) /= 0 .or. mod(shareLength/numBits, 2) /= 0) then
             error stop 'Invalid shares.'
         end if
         nPoints = int(shareLength/numBits/2)
-
-        if (size(shares) > K) then
-            print*, 'MESSAGE: More shares than necessary. Using only first K ones.'
-        else if (size(shares) < K) then
-            print*, 'WARNING: Less shares than necessary.'
-        end if
 
         allocate(pointShares(K,nPoints))
         allocate(character(nPoints) :: secret)
@@ -218,9 +211,7 @@ module functions
             if (len(shares(i)) /= shareLength) then
                 error stop 'Shares not equal in length.'
             end if
-            ! print*, 'DEBUGGG pre parseShare'
             pointShares(i,:) = parseShare(shares(i), numBits)
-            ! print*, 'DEBUGGG post parseShare'
         end do
 
         do i = 1, nPoints
@@ -241,11 +232,8 @@ module functions
         allocate(pointShare(int(shareLength/numBits/2)))
 
         do i = 1, int(shareLength/numBits/2)
-            ! print*, 'DEBUGGG parseShare do ', i, ' pre hex2dec 1'
-            x = hex2dec(share(1+(i-1)*2*numBits:numBits+(i-1)*2*numBits), numBits)
-            ! print*, 'DEBUGGG parseShare do ', i, ' pre hex2dec 2'
-            y = hex2dec(share(1+numBits+(i-1)*2*numBits:2*numBits+(i-1)*2*numBits), numBits)
-            ! print*, 'DEBUGGG parseShare do ', i, ' post hex2dec'
+            x = hex2dec(share(1+(i-1)*2*numBits:numBits*(2*i-1)), numBits)
+            y = hex2dec(share(1+numBits*(2*i-1):2*numbits*i), numBits)
             pointShare(i) = point(x,y)
         end do
 

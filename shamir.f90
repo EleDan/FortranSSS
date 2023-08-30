@@ -12,6 +12,13 @@ program shamir
     integer, dimension(1) :: checkModulus
     character(:), allocatable :: command, secret
 
+    ! DEBUGGGG
+
+    ! stop
+    ! END DEBUGGGG
+
+
+
     ! Default values to be modified
     K = 5
     N = 8
@@ -48,7 +55,7 @@ program shamir
     ! Recomposition
     if (secret == '') then
         print*, 'Loading shares from file ', sharesFilename, '.'
-        call recomposition(k, n, modulus, secretMaxLength, int(numBits*0.25), sharesFilename)
+        call recomposition(k, n, modulus, secretMaxLength, numBits/4, sharesFilename)
         stop
     end if
 
@@ -59,11 +66,7 @@ program shamir
 
     ! Decomposition
     call decomposition(K, N, modulus, secretMaxLength, &
-        int(numBits*0.25), sharesFilename, secret)
-    
-
-    ! DEBUGGGG
-    
+        numBits/4, sharesFilename, secret)
     
 
 end program shamir
