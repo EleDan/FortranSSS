@@ -96,87 +96,28 @@ module functions
 
     end function nextWhitespace
 
+    ! Va aggiunto il *0.25 quando regolo bene la storia degli integerBits
+    function dec2hex(dec, integerBits) result(hex)
+        integer, intent(in) :: dec, integerBits
+        character(integerBits) :: hex
+        character(8) :: c
 
-    ! ASCII to decimal array
-    ! function str2Dec(str) result(decArray)
-    !     character(*), allocatable, intent(in) :: str
-    !     integer, dimension(:), allocatable :: decArray
-    !     integer :: i, strLength
+        write(c,'(I0)') integerBits
+        write(hex,'(Z' // c // '.' // c // ')') dec
 
-    !     strLength = len(str)
-    !     allocate(decArray(strLength))
-    !     do i = 1, strLength
-    !         decArray(i) = iachar(str(i:i))
-    !     end do
-        
-    ! end function str2Dec
+    end function dec2hex
 
+    ! Anche qui
+    function hex2dec(hex, integerBits) result(dec)
+        integer, intent(in) :: integerBits
+        character(*), intent(in) :: hex
+        integer :: dec
+        character(8) :: c
 
-    ! function dec2Str(decArray) result(asciiStr)
-    !     integer, dimension(:), allocatable, intent(in) :: decArray
-    !     character(:), allocatable :: asciiStr
-    !     integer :: i, decLength
+        write(c,'(I0)') integerBits
+        read(hex,'(Z' // c // '.' // c // ')') dec
 
-    !     decLength = size(decArray)
-    !     allocate(character(decLength) :: asciiStr)
-
-    !     do i = 1, decLength
-    !         asciiStr(i:i) = achar(decArray(i))
-    !     end do
-
-    ! end function dec2Str
-
-
-    function dec2Bin(dec, decBits) result(bin)
-        integer, intent(in) :: dec, decBits
-        character(decBits) :: bin
-        integer :: i, q, m
-        character :: c
-        
-        bin = ''
-        q = dec
-        do i = 1, decBits
-            m = mod(q, 2)
-            q = int(q*0.5)
-            write(c, '(I1)') m
-            bin(decBits+1-i:decBits+1-i) = c
-        end do
-        
-    end function dec2Bin
-
-
-    function bin2Dec(bin, decBits) result(dec)
-        integer, intent(in) :: decBits
-        integer :: dec, i
-        character(8), intent(in) :: bin
-
-        dec = 0
-        do i = 1, decBits
-            dec = dec + 2**(decBits-i)*merge(1, 0, bin(i:i) == '1')
-        end do
-
-    end function bin2Dec
-
-
-    ! Binary to ASCII
-    function bin2Str(bin, decBits) result(asciiStr)
-        character(*), allocatable, intent(in) :: bin
-        character(:), allocatable :: asciiStr
-        integer, intent(in) :: decBits
-        integer :: i, binLength, dec
-
-        binLength = len(bin)
-        if (mod(binLength, decBits) /= 0) then
-            error stop 'Invalid binary sequence.'
-        end if
-        allocate(character(int(binLength/decBits)) :: asciiStr)
-
-        asciiStr = ''
-        do i = 1, binLength, decBits
-            dec = bin2Dec(bin(i:i+decBits-1), decBits)
-            asciiStr = asciiStr // achar(dec)
-        end do
-    end function bin2Str
+    end function hex2dec
 
     ! Adds ' ' to both left and right of the secret, in order to hide its length when crypted
     function spacesPad(str, maxLength) result(newStr)
@@ -224,9 +165,6 @@ module functions
 
     end function singleCrypt
 
-
-
-
     ! Operates the decomposition in N shares
     function shamirDecomposition(K, N, modulus, secretMaxLength, integerBits, secret) result(shares)
         character(*), intent(in) :: secret
@@ -248,8 +186,12 @@ module functions
             decChar = iachar(paddedSecret(i:i))
             cryptedChar = singleCrypt(decChar, N, K, modulus)
             do j = 1, N
-                shares(j)(1+(i-1)*2*integerBits:(2*i-1)*integerBits) = dec2Bin(cryptedChar(j)%x, integerBits)
-                shares(j)(1+(2*i-1)*integerBits:2*i*integerBits) = dec2Bin(cryptedChar(j)%y, integerBits)
+                shares(j)(1+(i-1)*2*integerBits:integerBits+(i-1)*2*integerBits) = &
+                    dec2hex(cryptedChar(j)%x, integerBits)
+                ! print*, dec2hex(cryptedChar(j)%x, integerBits) ! DEBUGGGG
+                shares(j)(1+integerBits+(i-1)*2*integerBits:2*integerBits+(i-1)*2*integerBits) = &
+                    dec2hex(cryptedChar(j)%y, integerBits)
+                ! print*, dec2hex(cryptedChar(j)%y, integerBits) ! DEBUGGGG
             end do
         end do
         
@@ -267,7 +209,7 @@ module functions
         if (mod(shareLength,integerBits) /= 0 .or. mod(shareLength/integerBits, 2) /= 0) then
             error stop 'Invalid shares.'
         end if
-        nPoints = int(shareLength/integerBits*0.5)
+        nPoints = int(shareLength/integerBits/2)
 
         if (size(shares) > K) then
             print*, 'MESSAGE: More shares than necessary. Using only first K ones.'
@@ -282,8 +224,9 @@ module functions
             if (len(shares(i)) /= shareLength) then
                 error stop 'Shares not equal in length.'
             end if
+            ! print*, 'DEBUGGG pre parseShare'
             pointShares(i,:) = parseShare(shares(i), integerBits)
-
+            ! print*, 'DEBUGGG post parseShare'
         end do
 
         do i = 1, nPoints
@@ -301,14 +244,14 @@ module functions
         integer :: i, shareLength, x, y
 
         shareLength = len(share)
-        if (mod(shareLength, integerBits) /= 0 .or. mod(shareLength/integerBits, 2) /= 0) then
-            error stop 'Invalid share.'
-        end if
         allocate(pointShare(int(shareLength/integerBits/2)))
 
         do i = 1, int(shareLength/integerBits/2)
-            x = bin2Dec(share(1+(i-1)*2*integerBits:(2*i-1)*integerBits), integerBits)
-            y = bin2Dec(share(1+(2*i-1)*integerBits:2*i*integerBits), integerBits)
+            ! print*, 'DEBUGGG parseShare do ', i, ' pre hex2dec 1'
+            x = hex2dec(share(1+(i-1)*2*integerBits:integerBits+(i-1)*2*integerBits), integerBits)
+            ! print*, 'DEBUGGG parseShare do ', i, ' pre hex2dec 2'
+            y = hex2dec(share(1+integerBits+(i-1)*2*integerBits:2*integerBits+(i-1)*2*integerBits), integerBits)
+            ! print*, 'DEBUGGG parseShare do ', i, ' post hex2dec'
             pointShare(i) = point(x,y)
         end do
 
