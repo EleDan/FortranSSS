@@ -36,3 +36,6 @@
 
 # VSCode files
 .vscode
+
+# Weird files
+fort.*
