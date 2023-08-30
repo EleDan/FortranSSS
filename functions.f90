@@ -6,13 +6,12 @@ module functions
         
     contains
 
-
     subroutine parseCommand(command, K, N, modulus, secretMaxLength, &
-        integerBits, sharesFilename, secret)
+        numBits, sharesFilename, secret)
         character(*) :: command
         integer :: K, N, i, iostat, index, argStart, argEnd
         integer, dimension(:), allocatable :: optionsIndexes
-        integer:: modulus, secretMaxLength, integerBits
+        integer:: modulus, secretMaxLength, numBits
         character(:), allocatable, optional :: sharesFilename
         character(:), allocatable :: secret
 
@@ -49,9 +48,9 @@ module functions
                     error stop 'Failed reading secretMaxLength.'
                 end if
             else if (command(index:index+12) == 'integer-bits') then
-                read(command(argStart:argEnd), '(I8.1)', iostat=iostat) integerBits
+                read(command(argStart:argEnd), '(I8.1)', iostat=iostat) numBits
                 if (iostat /= 0) then
-                    error stop 'Failed reading integerBits.'
+                    error stop 'Failed reading numBits.'
                 end if
             else if (command(index:index+15) == 'shares-filename') then
                 deallocate(sharesFilename)
@@ -96,25 +95,25 @@ module functions
 
     end function nextWhitespace
 
-    ! Va aggiunto il *0.25 quando regolo bene la storia degli integerBits
-    function dec2hex(dec, integerBits) result(hex)
-        integer, intent(in) :: dec, integerBits
-        character(integerBits) :: hex
+    ! Va aggiunto il *0.25 quando regolo bene la storia degli numBits
+    function dec2hex(dec, numBits) result(hex)
+        integer, intent(in) :: dec, numBits
+        character(numBits) :: hex
         character(8) :: c
 
-        write(c,'(I0)') integerBits
+        write(c,'(I0)') numBits
         write(hex,'(Z' // c // '.' // c // ')') dec
 
     end function dec2hex
 
     ! Anche qui
-    function hex2dec(hex, integerBits) result(dec)
-        integer, intent(in) :: integerBits
+    function hex2dec(hex, numBits) result(dec)
+        integer, intent(in) :: numBits
         character(*), intent(in) :: hex
         integer :: dec
         character(8) :: c
 
-        write(c,'(I0)') integerBits
+        write(c,'(I0)') numBits
         read(hex,'(Z' // c // '.' // c // ')') dec
 
     end function hex2dec
@@ -166,11 +165,11 @@ module functions
     end function singleCrypt
 
     ! Operates the decomposition in N shares
-    function shamirDecomposition(K, N, modulus, secretMaxLength, integerBits, secret) result(shares)
+    function shamirDecomposition(K, N, modulus, secretMaxLength, numBits, secret) result(shares)
         character(*), intent(in) :: secret
-        integer, intent(in) :: N, K, secretMaxLength, integerBits, modulus
+        integer, intent(in) :: N, K, secretMaxLength, numBits, modulus
         character(secretMaxLength) :: paddedSecret
-        character(2*integerBits*secretMaxLength), dimension(N) :: shares
+        character(2*numBits*secretMaxLength), dimension(N) :: shares
         type(point), dimension(N) :: cryptedChar
         integer :: i, j, decChar
 
@@ -186,30 +185,30 @@ module functions
             decChar = iachar(paddedSecret(i:i))
             cryptedChar = singleCrypt(decChar, N, K, modulus)
             do j = 1, N
-                shares(j)(1+(i-1)*2*integerBits:integerBits+(i-1)*2*integerBits) = &
-                    dec2hex(cryptedChar(j)%x, integerBits)
-                ! print*, dec2hex(cryptedChar(j)%x, integerBits) ! DEBUGGGG
-                shares(j)(1+integerBits+(i-1)*2*integerBits:2*integerBits+(i-1)*2*integerBits) = &
-                    dec2hex(cryptedChar(j)%y, integerBits)
-                ! print*, dec2hex(cryptedChar(j)%y, integerBits) ! DEBUGGGG
+                shares(j)(1+(i-1)*2*numBits:numBits+(i-1)*2*numBits) = &
+                    dec2hex(cryptedChar(j)%x, numBits)
+                ! print*, dec2hex(cryptedChar(j)%x, numBits) ! DEBUGGGG
+                shares(j)(1+numBits+(i-1)*2*numBits:2*numBits+(i-1)*2*numBits) = &
+                    dec2hex(cryptedChar(j)%y, numBits)
+                ! print*, dec2hex(cryptedChar(j)%y, numBits) ! DEBUGGGG
             end do
         end do
         
     end function shamirDecomposition
 
 
-    function shamirRecomposition(shares, K, integerBits, modulus) result(secret)
+    function shamirRecomposition(shares, K, numBits, modulus) result(secret)
         character(*), dimension(:), intent(in) :: shares
-        integer, intent(in) :: K, integerBits, modulus
+        integer, intent(in) :: K, numBits, modulus
         character(:), allocatable :: secret
         integer :: i, shareLength, nPoints, dec
         type(point), dimension(:,:), allocatable :: pointShares
 
         shareLength = len(shares(1))
-        if (mod(shareLength,integerBits) /= 0 .or. mod(shareLength/integerBits, 2) /= 0) then
+        if (mod(shareLength,numBits) /= 0 .or. mod(shareLength/numBits, 2) /= 0) then
             error stop 'Invalid shares.'
         end if
-        nPoints = int(shareLength/integerBits/2)
+        nPoints = int(shareLength/numBits/2)
 
         if (size(shares) > K) then
             print*, 'MESSAGE: More shares than necessary. Using only first K ones.'
@@ -225,7 +224,7 @@ module functions
                 error stop 'Shares not equal in length.'
             end if
             ! print*, 'DEBUGGG pre parseShare'
-            pointShares(i,:) = parseShare(shares(i), integerBits)
+            pointShares(i,:) = parseShare(shares(i), numBits)
             ! print*, 'DEBUGGG post parseShare'
         end do
 
@@ -237,20 +236,20 @@ module functions
     end function shamirRecomposition
 
 
-    function parseShare(share, integerBits) result(pointShare)
+    function parseShare(share, numBits) result(pointShare)
         character(*), intent(in) :: share
-        integer, intent(in) :: integerBits
+        integer, intent(in) :: numBits
         type(point), dimension(:), allocatable :: pointShare
         integer :: i, shareLength, x, y
 
         shareLength = len(share)
-        allocate(pointShare(int(shareLength/integerBits/2)))
+        allocate(pointShare(int(shareLength/numBits/2)))
 
-        do i = 1, int(shareLength/integerBits/2)
+        do i = 1, int(shareLength/numBits/2)
             ! print*, 'DEBUGGG parseShare do ', i, ' pre hex2dec 1'
-            x = hex2dec(share(1+(i-1)*2*integerBits:integerBits+(i-1)*2*integerBits), integerBits)
+            x = hex2dec(share(1+(i-1)*2*numBits:numBits+(i-1)*2*numBits), numBits)
             ! print*, 'DEBUGGG parseShare do ', i, ' pre hex2dec 2'
-            y = hex2dec(share(1+integerBits+(i-1)*2*integerBits:2*integerBits+(i-1)*2*integerBits), integerBits)
+            y = hex2dec(share(1+numBits+(i-1)*2*numBits:2*numBits+(i-1)*2*numBits), numBits)
             ! print*, 'DEBUGGG parseShare do ', i, ' post hex2dec'
             pointShare(i) = point(x,y)
         end do
@@ -350,13 +349,13 @@ module functions
     end subroutine findSubstring
 
     
-    subroutine decomposition(k, n, modulus, secretMaxLength, integerBits, sharesFilename, secret)
-        integer, intent(in) :: k, n, modulus, secretMaxLength, integerBits
+    subroutine decomposition(k, n, modulus, secretMaxLength, numBits, sharesFilename, secret)
+        integer, intent(in) :: k, n, modulus, secretMaxLength, numBits
         character(*), intent(in) :: secret, sharesFilename
-        character(2*secretMaxLength*integerBits), dimension(n) :: shares
+        character(2*secretMaxLength*numBits), dimension(n) :: shares
         integer :: fileID, i
 
-        shares = shamirDecomposition(k, n, modulus, secretMaxLength, integerBits, secret)
+        shares = shamirDecomposition(k, n, modulus, secretMaxLength, numBits, secret)
 
         open(newunit=fileID, status='replace', file=sharesFilename, action='write')
         do i = 1, N
@@ -367,10 +366,10 @@ module functions
     end subroutine decomposition
 
 
-    subroutine recomposition(k, n, modulus, secretMaxLength, integerBits, sharesFilename)
-        integer, intent(in) :: k, n, modulus, secretMaxLength, integerBits
+    subroutine recomposition(k, n, modulus, secretMaxLength, numBits, sharesFilename)
+        integer, intent(in) :: k, n, modulus, secretMaxLength, numBits
         character(*), intent(in) :: sharesFilename
-        character(2*secretMaxLength*integerBits), dimension(n) :: recoveredShares
+        character(2*secretMaxLength*numBits), dimension(n) :: recoveredShares
         character(secretMaxLength) :: recoveredSecret
         character(256) :: iomsg
         integer :: fileID, iostat, i
@@ -391,7 +390,7 @@ module functions
         if (k > size(recoveredShares)) then
             error stop 'Too few shares: unrecoverable secret.'
         end if
-        recoveredSecret = trim(adjustl(shamirRecomposition(recoveredShares, k, integerBits, modulus)))
+        recoveredSecret = trim(adjustl(shamirRecomposition(recoveredShares, k, numBits, modulus)))
 
         print*, 'RECOVERED SECRET:'
         print*, ''
