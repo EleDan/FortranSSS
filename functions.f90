@@ -7,11 +7,11 @@ module functions
     contains
 
     subroutine parseCommand(command, K, N, modulus, secretMaxLength, &
-        numBits, sharesFilename, secret)
+        sharesFilename, secret)
         character(*) :: command
         integer :: K, N, i, iostat, index, argStart, argEnd
         integer, dimension(:), allocatable :: optionsIndexes
-        integer:: modulus, secretMaxLength, numBits
+        integer:: modulus, secretMaxLength
         character(:), allocatable, optional :: sharesFilename
         character(:), allocatable :: secret
 
@@ -46,11 +46,6 @@ module functions
                 read(command(argStart:argEnd), '(I8.1)', iostat=iostat) secretMaxLength
                 if (iostat /= 0) then
                     error stop 'Failed reading secretMaxLength.'
-                end if
-            else if (command(index:index+12) == 'integer-bits') then
-                read(command(argStart:argEnd), '(I8.1)', iostat=iostat) numBits
-                if (iostat /= 0) then
-                    error stop 'Failed reading numBits.'
                 end if
             else if (command(index:index+15) == 'shares-filename') then
                 deallocate(sharesFilename)
@@ -146,7 +141,7 @@ module functions
         integer, dimension(K) :: coeffs
         type(polynomial) :: poly
         real :: r
-        integer :: i, y, file
+        integer :: i, y
 
         coeffs(1) = dec
         do i = 2, size(coeffs)
@@ -397,5 +392,16 @@ module functions
         print*, recoveredSecret ! Add end character to avoid whitespaces
 
     end subroutine recomposition
+
+    function pow2by4(n) result(exponent)
+        integer, intent(in) :: n
+        integer :: exponent
+
+        exponent = 4
+        do while (n >= 2**exponent)
+            exponent = exponent+4
+        end do
+
+    end function pow2by4
 
 end module functions

@@ -6,20 +6,17 @@ program shamir
 
     integer, dimension(5), parameter :: FERMAT_PRIMES = [3, 5, 17, 257, 65537]
     character(12), parameter :: EXECUTABLE_FILENAME = 'shamir.exe'
-    integer :: N, K, modulus, secretMaxLength, numBits, i
+    integer :: N, K, modulus, secretMaxLength, numBits
     character(:), allocatable :: sharesFilename
     integer :: commandLength
     integer, dimension(1) :: checkModulus
     character(:), allocatable :: command, secret
-    !DEBUGG
-    ! character(100) :: c
 
     ! Default values to be modified
     K = 5
     N = 8
     modulus = 257
     secretMaxLength = 200
-    numBits = 16
     sharesFilename = 'shares.txt'
     secret = ''
 
@@ -30,7 +27,9 @@ program shamir
     command = command(len(EXECUTABLE_FILENAME)+2:)
 
     call parseCommand(command, K, N, modulus, secretMaxLength, &
-        numBits, sharesFilename, secret)
+        sharesFilename, secret)
+
+    numBits = pow2by4(modulus)
 
     ! Checks on numBits
     if (numBits >= 32) then
@@ -45,7 +44,7 @@ program shamir
     if (modulus > 2**numBits) then
         print*, 'WARNING: modulus too large, cannot assure correct reconstruction.'
     end if
-    
+
     ! Recomposition
     if (secret == '') then
         print*, 'Loading shares from file ', sharesFilename, '.'
@@ -64,11 +63,7 @@ program shamir
     
 
     ! DEBUGGGG
-    ! write(c,'(I0)') numBits/4
-    ! write(*,'(Z' // c // ')') 355
-
-    ! print*, dec2hex(355, numBits)
-    ! print*, hex2dec('163', numBits)
+    
     
 
 end program shamir
